@@ -223,14 +223,15 @@ class MenuVote {
 		int totalVotes = getTotalVotes();
 	
 		@g_menus[eidx] = CTextMenu(@voteMenuCallback);
-		g_menus[eidx].SetTitle("\\y" + voteParams.title);
+		g_menus[eidx].SetTitle("\\y\n" + voteParams.title + "\n");
 		
 		for (uint i = 0; i < voteParams.options.length(); i++) {
 			int thisOption = i+1;
 			int voteCount = getOptionVotes(thisOption);
 			
 			string label = voteParams.options[i].label;
-			bool blinkThisOption = shouldBlinkSelectedOption && selectedOption.label == label;
+			string value = voteParams.options[i].value;
+			bool blinkThisOption = shouldBlinkSelectedOption && selectedOption.value == value;
 			int percent = getVotePercent(voteCount);
 			bool isBestOption = percentBased ? (percent >= voteParams.percentNeeded) : (voteCount == bestVotes);
 			
@@ -255,12 +256,12 @@ class MenuVote {
 			}
 			
 			if (playerVotes[eidx] == thisOption) {
-				label += " X";
+				label += " \\y<--\\w";
 			}
 			
 			if (i == voteParams.options.length()-1) {
 				if (status != MVOTE_FINISHED) {
-					string timeleft = "\n\n" + (secondsLeft+1) + " seconds left";
+					string timeleft = "\n\n" + (secondsLeft+1) + " Segundos restantes";
 					label += "\\y" + timeleft;
 				} else {
 					label += "\n\n";
@@ -298,7 +299,7 @@ class MenuVote {
 	
 	void cancel() {
 		@g_menus[0] = CTextMenu(@voteMenuCallback);
-		g_menus[0].SetTitle("\\yVote cancelled...");
+		g_menus[0].SetTitle("\\rVotacion cancelada..\\w\n");
 		g_menus[0].AddItem(" ", any(""));
 		g_menus[0].Register();
 
@@ -345,6 +346,30 @@ class MenuVote {
 		@g_menuTimer = g_Scheduler.SetTimeout("voteThink", 1.0f);
 	}
 	
+	string getTitle() {
+		return voteParams.title;
+	}
+	
+	string getResultString() {
+		string result = voteParams.title;
+	
+		for (uint i = 0; i < voteParams.options.size(); i++) {
+			if (!voteParams.options[i].isVotable) {
+				continue;
+			}
+			
+			string box = (selectedOption.value == voteParams.options[i].value) ? "[x]" : "[ ]";
+			int voteCount = getOptionVotes(i+1);
+			result += "   " + box + " " + voteParams.options[i].label;
+			
+			if (voteCount > 0) {
+				result += " (" + voteCount + ")";
+			}
+		}
+	
+		return result;
+	}
+	
 	int getOptionVotes(int option) {
 		int voteCount = 0;
 		
@@ -359,7 +384,7 @@ class MenuVote {
 		int voteCount = 0;
 		
 		for (uint k = 0; k < playerVotes.size(); k++) {
-			voteCount += (playerVotes[k] != 0) ? 1 : 0;
+			voteCount += (playerVotes[k] > 0) ? 1 : 0;
 		}
 		
 		return voteCount;
@@ -378,6 +403,16 @@ class MenuVote {
 	int getOptionVotePercent(string label) {
 		for (uint i = 0; i < voteParams.options.length(); i++) {
 			if (voteParams.options[i].label == label) {
+				return getVotePercent(getOptionVotes(i+1));
+			}
+		}
+		
+		return -1;
+	}
+	
+	int getOptionVotePercentByValue(string value) {
+		for (uint i = 0; i < voteParams.options.length(); i++) {
+			if (voteParams.options[i].value == value) {
 				return getVotePercent(getOptionVotes(i+1));
 			}
 		}
@@ -410,7 +445,7 @@ class MenuVote {
 		for (uint i = 0; i < voteParams.options.length(); i++) {
 			int voteCount = getOptionVotes(i+1);
 			
-			if (voteCount >= bestVotes) {
+			if (voteParams.options[i].isVotable && voteCount >= bestVotes) {
 				bestOptions.insertLast(voteParams.options[i]);
 			}
 		}
